@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Parallax Social Share FAB</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<style>
+  :root{
+    --fab-size: 56px;
+    --fab-color: #ffffff;
+    --fab-icon-color: #0a0a0c;
+    --item-size: 48px;
+    --accent: #7c5cff;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html,body{
+    height:100%;
+    margin:0;
+    background:#fafafa; /* Clean light mode background */
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Helvetica, Arial, sans-serif;
+    overflow:hidden;
+  }
+
+  .stage{
+    position:relative;
+    width:100%;
+    height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    isolation:isolate;
+  }
+
+  /* The Premium Dots Pattern */
+  .bg-dots{
+    position:absolute;
+    inset:0;
+    background-image: radial-gradient(rgba(0,0,0,0.12) 1.5px, transparent 1.5px);
+    background-size: 36px 36px;
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, black 10%, transparent 80%);
+    mask-image: radial-gradient(circle at 50% 50%, black 10%, transparent 80%);
+    animation: dotsDrift 60s linear infinite;
+    z-index: 2; /* Positioned above the orbs */
+    pointer-events: none;
+  }
+  @keyframes dotsDrift{
+    from{ background-position: 0 0; }
+    to{ background-position: 360px 360px; }
+  }
+
+  .bg-orb{
+    position:absolute;
+    border-radius:50%;
+    filter: blur(90px);
+    opacity:0.5;
+    z-index:0;
+    mix-blend-mode: multiply; /* Softens colors against the white bg */
+    will-change: transform;
+  }
+  .orb-a{
+    width:520px; height:520px;
+    background: radial-gradient(circle at 30% 30%, #a78bfa, transparent 70%);
+    top:-10%; left:-8%;
+    animation: floatOrbA 16s ease-in-out infinite;
+  }
+  .orb-b{
+    width:460px; height:460px;
+    background: radial-gradient(circle at 60% 40%, #67e8f9, transparent 70%);
+    bottom:-14%; right:-6%;
+    animation: floatOrbB 20s ease-in-out infinite;
+  }
+  .orb-c{
+    width:400px; height:400px;
+    background: radial-gradient(circle at 50% 50%, #fbcfe8, transparent 70%);
+    top: 20%; right: 10%;
+    animation: floatOrbC 18s ease-in-out infinite;
+  }
+
+  @keyframes floatOrbA{
+    0%,100%{ transform: translate(0,0) scale(1); }
+    50%{ transform: translate(40px,30px) scale(1.08); }
+  }
+  @keyframes floatOrbB{
+    0%,100%{ transform: translate(0,0) scale(1); }
+    50%{ transform: translate(-30px,-25px) scale(1.1); }
+  }
+  @keyframes floatOrbC{
+    0%,100%{ transform: translate(0,0) scale(1); }
+    50%{ transform: translate(-20px,40px) scale(1.05); }
+  }
+
+  .vignette{
+    position:absolute;
+    inset:0;
+    z-index:1;
+    pointer-events:none;
+    background: radial-gradient(circle at 50% 50%, transparent 45%, rgba(250,250,250,0.7) 100%);
+  }
+
+  .noise{
+    position:absolute;
+    inset:0;
+    z-index:3;
+    pointer-events:none;
+    opacity:0.4;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .stage-caption{
+    position:absolute;
+    top:52px;
+    left:50%;
+    transform:translateX(-50%);
+    text-align:center;
+    z-index:5;
+    user-select:none;
+  }
+  .stage-caption .eyebrow{
+    font-size:11px;
+    letter-spacing:.22em;
+    text-transform:uppercase;
+    color:#7c5cff;
+    font-weight:600;
+    margin-bottom:8px;
+  }
+  .stage-caption .title{
+    font-size:15px;
+    color:rgba(0,0,0,0.55);
+    letter-spacing:.01em;
+  }
+  .stage-caption .title b{ color:#000; font-weight:600; }
+
+  .fab-container{
+    position:relative;
+    width:440px;
+    height:440px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:5;
+    animation: containerFloat 6s ease-in-out infinite;
+  }
+  @keyframes containerFloat{
+    0%,100%{ transform: translateY(0px); }
+    50%{ transform: translateY(-6px); }
+  }
+
+  .fab-btn{
+    position:absolute;
+    width:var(--fab-size);
+    height:var(--fab-size);
+    border-radius:50%;
+    background:var(--fab-color);
+    border:1px solid rgba(0,0,0,0.05);
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--fab-icon-color);
+    z-index:20;
+    box-shadow:
+      0 8px 24px rgba(0,0,0,0.15),
+      0 0 0px rgba(124,92,255,0);
+    outline:none;
+    transition:
+      transform .4s cubic-bezier(.34,1.56,.64,1),
+      box-shadow .4s ease;
+    will-change: transform, box-shadow;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .fab-btn.glow{
+    animation: fabGlow 3.2s ease-in-out infinite;
+  }
+  @keyframes fabGlow{
+    0%,100%{ box-shadow: 0 8px 24px rgba(0,0,0,0.15), 0 0 18px rgba(124,92,255,0.15), 0 0 0 rgba(124,92,255,0); }
+    50%{ box-shadow: 0 8px 28px rgba(0,0,0,0.2), 0 0 34px rgba(124,92,255,0.35), 0 0 0 rgba(124,92,255,0); }
+  }
+  .fab-btn:hover{ transform: scale(1.1); }
+  .fab-btn:active{ transform: scale(0.9); }
+
+  .fab-icon-wrap{
+    width:45%;
+    height:45%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition: transform .45s cubic-bezier(.34,1.56,.64,1);
+  }
+  .fab-btn.open .fab-icon-wrap{ transform: rotate(45deg); }
+  .fab-icon-wrap svg{ width:100%; height:100%; display:block; }
+
+  .ripple{
+    position:absolute;
+    left:50%; top:50%;
+    width:var(--fab-size); height:var(--fab-size);
+    margin-left:calc(var(--fab-size) / -2);
+    margin-top:calc(var(--fab-size) / -2);
+    border-radius:50%;
+    background: radial-gradient(circle, rgba(124,92,255,0.55), transparent 70%);
+    transform: scale(0);
+    opacity:.9;
+    pointer-events:none;
+    z-index:15;
+  }
+  .ripple.animate{
+    animation: rippleOut .6s cubic-bezier(.2,.7,.3,1) forwards;
+  }
+  @keyframes rippleOut{
+    to{ transform: scale(2.6); opacity:0; }
+  }
+
+  .pulse-ring{
+    position:absolute;
+    width:var(--fab-size);
+    height:var(--fab-size);
+    border-radius:50%;
+    border:1px solid rgba(124,92,255,0.4);
+    z-index:10;
+    pointer-events:none;
+    animation: pulse 3.4s cubic-bezier(0,0,.2,1) infinite;
+  }
+  .pulse-ring.r2{ animation-delay: 1.13s; }
+  .pulse-ring.r3{ animation-delay: 2.26s; }
+  @keyframes pulse{
+    0%   { transform:scale(1);   opacity:.5; border-color: rgba(124,92,255,0.8); }
+    70%  { opacity:.12; }
+    100% { transform:scale(2.2); opacity:0; border-color: rgba(124,92,255,0); }
+  }
+
+  .nav-item{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:var(--item-size);
+    height:var(--item-size);
+    margin-left:calc(var(--item-size) / -2);
+    margin-top:calc(var(--item-size) / -2);
+    pointer-events:none;
+    opacity:0;
+    filter: blur(6px);
+    transform: translate(0px,0px) scale(0);
+    transition:
+      transform .55s cubic-bezier(.34,1.56,.64,1),
+      opacity .32s ease,
+      filter .4s ease;
+  }
+  .nav-item.visible{
+    pointer-events:auto;
+    opacity:1;
+    filter: blur(0px);
+  }
+
+  .nav-item-inner{
+    position:relative;
+    width:100%;
+    height:100%;
+    transition: transform .12s linear, filter .18s ease-in-out, opacity .18s ease-in-out;
+    animation: itemDrift 5s ease-in-out infinite;
+  }
+  .nav-item-inner.dimmed{
+    filter: blur(1.5px) brightness(1.2); 
+    opacity:.6;
+  }
+  @keyframes itemDrift{
+    0%,100%{ margin-top:0px; }
+    50%{ margin-top:-4px; }
+  }
+
+  .nav-btn{
+    width:100%;
+    height:100%;
+    border-radius:50%;
+    border:none;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#ffffff;
+    position:relative;
+    transition: background .3s ease, transform .15s ease, box-shadow .3s ease;
+    flex-shrink:0;
+  }
+  .nav-btn::after{
+    content:"";
+    position:absolute;
+    inset:-6px;
+    border-radius:50%;
+    border:1px solid var(--pcolor, #fff);
+    opacity:0;
+    transform:scale(.7);
+    transition: opacity .25s ease, transform .25s ease;
+    pointer-events:none;
+  }
+  .nav-btn:hover::after{ opacity:.55; transform:scale(1); }
+  .nav-icon-wrap{
+    width:45%;
+    height:45%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .nav-icon-wrap svg{ width:100%; height:100%; display:block; }
+  .nav-btn:hover{ transform: scale(1.14); }
+  .nav-btn:active{ transform: scale(0.9); }
+  .nav-btn.copied{ background:#22C55E !important; }
+
+  .tooltip{
+    position:absolute;
+    bottom:calc(100% + 10px);
+    left:50%;
+    transform:translateX(-50%) translateY(4px);
+    background:rgba(255,255,255,0.95);
+    backdrop-filter: blur(6px);
+    color:#000000;
+    padding:5px 11px;
+    border-radius:7px;
+    font-size:12px;
+    white-space:nowrap;
+    pointer-events:none;
+    user-select:none;
+    font-weight:500;
+    line-height:1.4;
+    opacity:0;
+    border:1px solid rgba(0,0,0,0.08);
+    transition: opacity .18s ease, transform .18s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .nav-item:hover .tooltip{
+    opacity:1;
+    transform:translateX(-50%) translateY(0);
+  }
+
+  .burst{
+    position:absolute;
+    left:50%; top:50%;
+    width:6px; height:6px;
+    margin-left:-3px; margin-top:-3px;
+    border-radius:50%;
+    background:#22C55E;
+    pointer-events:none;
+    z-index:30;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="bg-dots"></div>
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
+  <div class="bg-orb orb-c"></div>
+  <div class="vignette"></div>
+  <div class="noise"></div>
+
+  <div class="stage-caption">
+    <div class="eyebrow">Parallax Social Share</div>
+    <div class="title">Tap the <b>+</b> to open the share ring</div>
+  </div>
+
+  <div class="fab-container" id="fabContainer">
+    <!-- nav items injected by JS -->
+    <button class="fab-btn" id="fabBtn" aria-label="Share">
+      <span class="fab-icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </span>
+    </button>
+    <div class="pulse-ring" id="pulseRing"></div>
+    <div class="pulse-ring r2"></div>
+    <div class="pulse-ring r3"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const pulseRing = document.getElementById("pulseRing");
+  const stage = document.querySelector(".stage");
+
+  /* ---------------- Sound Effects (Tone.js) ---------------- */
+  const SoundFX = {
+    initialized: false,
+    synths: {},
+    async init() {
+      if (this.initialized) return;
+      // Start the audio context (requires a user gesture first)
+      await Tone.start();
+      
+      // Soft pop for FAB open/close
+      this.synths.pop = new Tone.MembraneSynth({
+        pitchDecay: 0.05,
+        octaves: 4,
+        oscillator: { type: "sine" },
+        envelope: { attack: 0.001, decay: 0.2, sustain: 0, release: 0.2 }
+      }).toDestination();
+      this.synths.pop.volume.value = -10;
+
+      // Clean chime for icons appearing
+      this.synths.chime = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: "sine" },
+        envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 }
+      }).toDestination();
+      this.synths.chime.volume.value = -14;
+
+      // Delicate tick for hovering
+      this.synths.hover = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: "triangle" },
+        envelope: { attack: 0.005, decay: 0.05, sustain: 0, release: 0.05 }
+      }).toDestination();
+      this.synths.hover.volume.value = -20;
+
+      // Bright resolving chord for copy success
+      this.synths.success = new Tone.PolySynth(Tone.Synth, {
+        oscillator: { type: "triangle" },
+        envelope: { attack: 0.01, decay: 0.1, sustain: 0.3, release: 1 }
+      }).toDestination();
+      this.synths.success.volume.value = -12;
+
+      this.initialized = true;
+    },
+    playPop(open) {
+      if (!this.initialized) return;
+      this.synths.pop.triggerAttackRelease(open ? "E3" : "C2", "0.1");
+    },
+    playSpawn(delay, index) {
+      if (!this.initialized) return;
+      const now = Tone.now();
+      // Ascending pentatonic scale
+      const notes = ["C5", "D5", "E5", "G5", "A5", "C6"]; 
+      const note = notes[index % notes.length];
+      this.synths.chime.triggerAttackRelease(note, "0.05", now + delay);
+    },
+    playHover() {
+      if (!this.initialized) return;
+      this.synths.hover.triggerAttackRelease("C6", "0.05");
+    },
+    playSuccess() {
+      if (!this.initialized) return;
+      const now = Tone.now();
+      // Plays a C major chord followed by an F major chord
+      this.synths.success.triggerAttackRelease(["C5", "E5", "G5"], "0.1", now);
+      this.synths.success.triggerAttackRelease(["F5", "A5", "C6"], "0.4", now + 0.15);
+    }
+  };
+
+  /* ---------------- Config & Definitions ---------------- */
+  const config = {
+    shareUrl: "",
+    shareText: "Check this out:",
+    emailSubject: "Interesting Link",
+    platformsShown: ["twitter","linkedin","whatsapp","copy"],
+    depths: { twitter:1, linkedin:.75, whatsapp:.9, copy:.8 },
+    fabSize: 56,
+    itemSize: 48,
+    iconSizeRatio: .45,
+    spread: 130,
+    startAngle: -180, /* Semi-circle arch starts from the left */
+    parallaxStrength: 1,
+    parallaxSmoothing: .6,
+    glowEnabled: true,
+    glowIntensity: .5,
+    pulseEnabled: true,
+    fabOpenOnHover: false
+  };
+
+  const PLATFORMS = {
+    twitter: {
+      label: "X / Twitter",
+      color: "#000000",
+      icon: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`,
+      getUrl: (url, text) => `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`
+    },
+    linkedin: {
+      label: "LinkedIn",
+      color: "#0A66C2",
+      icon: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>`,
+      getUrl: (url) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`
+    },
+    whatsapp: {
+      label: "WhatsApp",
+      color: "#25D366",
+      icon: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>`,
+      getUrl: (url, text) => `https://wa.me/?text=${encodeURIComponent(text + " " + url)}`
+    },
+    copy: {
+      label: "Copy Link",
+      color: "#64748B",
+      icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`,
+      iconCopied: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+      getUrl: () => ""
+    }
+  };
+
+  const container = document.getElementById("fabContainer");
+  const fabBtn = document.getElementById("fabBtn");
+
+  container.style.setProperty("--fab-size", config.fabSize + "px");
+  container.style.setProperty("--item-size", config.itemSize + "px");
+  if (config.glowEnabled) fabBtn.classList.add("glow");
+  if (!config.pulseEnabled) document.querySelectorAll(".pulse-ring").forEach(r => r.style.display = "none");
+
+  const entries = config.platformsShown.map(key => ({ key, depth: config.depths[key] }));
+  const total = entries.length;
+  const angleStep = total > 1 ? 180 / (total - 1) : 0;
+  const iconSize = Math.round(config.itemSize * config.iconSizeRatio);
+
+  const items = entries.map((entry, index) => {
+    const platform = PLATFORMS[entry.key];
+    const angle = config.startAngle + angleStep * index;
+    const rad = angle * Math.PI / 180;
+    const targetX = Math.cos(rad) * config.spread;
+    const targetY = Math.sin(rad) * config.spread;
+    const perspectiveScale = 0.88 + entry.depth * 0.12;
+    const shadowBlur = 8 + entry.depth * 20;
+    const shadowOpacity = 0.15 + entry.depth * 0.25;
+    const shadow = `0 ${Math.round(entry.depth * 12)}px ${shadowBlur}px rgba(0,0,0,${shadowOpacity})`;
+    const glowShadow = config.glowEnabled
+      ? `, 0 0 ${Math.round(config.glowIntensity * entry.depth * 26)}px ${platform.color}70`
+      : "";
+
+    const wrap = document.createElement("div");
+    wrap.className = "nav-item";
+    wrap.style.zIndex = Math.round(entry.depth * 10) + 1;
+    wrap.dataset.openDelay = (index * 0.07).toFixed(3);
+    wrap.dataset.closeDelay = ((total - 1 - index) * 0.04).toFixed(3);
+
+    const inner = document.createElement("div");
+    inner.className = "nav-item-inner";
+    inner.style.animationDelay = (index * 0.35) + "s";
+
+    const tooltip = document.createElement("div");
+    tooltip.className = "tooltip";
+    tooltip.textContent = platform.label;
+
+    const btn = document.createElement("button");
+    btn.className = "nav-btn";
+    btn.style.setProperty("--pcolor", platform.color);
+    btn.style.background = platform.color;
+    btn.style.boxShadow = shadow + glowShadow;
+    btn.setAttribute("aria-label", platform.label);
+
+    const iconWrap = document.createElement("span");
+    iconWrap.className = "nav-icon-wrap";
+    iconWrap.style.width = iconSize + "px";
+    iconWrap.style.height = iconSize + "px";
+    iconWrap.innerHTML = platform.icon;
+    btn.appendChild(iconWrap);
+
+    btn.addEventListener("click", (e) => {
+      spawnRipple(btn, platform.color);
+      if (entry.key === "copy") {
+        handleCopy(btn, iconWrap, tooltip, platform);
+      } else {
+        const url = platform.getUrl(getShareUrl(), config.shareText, config.emailSubject);
+        if (url) window.open(url, "_blank", "noopener,noreferrer");
+      }
+    });
+
+    btn.addEventListener("mouseenter", () => {
+      setHovered(entry.key);
+      SoundFX.playHover();
+    });
+    btn.addEventListener("mouseleave", () => setHovered(null));
+
+    inner.appendChild(tooltip);
+    inner.appendChild(btn);
+    wrap.appendChild(inner);
+    container.insertBefore(wrap, fabBtn);
+
+    return { key: entry.key, depth: entry.depth, targetX, targetY, perspectiveScale, wrap, inner, btn };
+  });
+
+  function getShareUrl(){
+    return config.shareUrl || window.location.href;
+  }
+
+  function spawnRipple(btn, color){
+    const ring = document.createElement("span");
+    ring.style.position = "absolute";
+    ring.style.inset = "-4px";
+    ring.style.borderRadius = "50%";
+    ring.style.background = `radial-gradient(circle, ${color}55, transparent 70%)`;
+    ring.style.transform = "scale(0)";
+    ring.style.opacity = "1";
+    ring.style.pointerEvents = "none";
+    ring.style.transition = "transform .55s cubic-bezier(.2,.7,.3,1), opacity .55s ease";
+    btn.appendChild(ring);
+    requestAnimationFrame(() => {
+      ring.style.transform = "scale(2.4)";
+      ring.style.opacity = "0";
+    });
+    setTimeout(() => ring.remove(), 600);
+  }
+
+  function spawnBurst(originEl){
+    const rect = originEl.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const count = 10;
+    for (let i = 0; i < count; i++){
+      const p = document.createElement("div");
+      p.className = "burst";
+      p.style.left = cx + "px";
+      p.style.top = cy + "px";
+      p.style.position = "fixed";
+      document.body.appendChild(p);
+      const ang = (Math.PI * 2 * i) / count + Math.random() * 0.3;
+      const dist = 30 + Math.random() * 26;
+      const dx = Math.cos(ang) * dist;
+      const dy = Math.sin(ang) * dist;
+      p.animate([
+        { transform: "translate(0,0) scale(1)", opacity: 1 },
+        { transform: `translate(${dx}px, ${dy}px) scale(0)`, opacity: 0 }
+      ], { duration: 550 + Math.random() * 200, easing: "cubic-bezier(.2,.7,.3,1)" });
+      setTimeout(() => p.remove(), 800);
+    }
+  }
+
+  function handleCopy(btn, iconWrap, tooltip, platform){
+    const url = getShareUrl();
+    const finish = () => {
+      SoundFX.playSuccess();
+      btn.classList.add("copied");
+      iconWrap.innerHTML = platform.iconCopied;
+      tooltip.textContent = "Copied!";
+      spawnBurst(btn);
+      setTimeout(() => {
+        btn.classList.remove("copied");
+        iconWrap.innerHTML = platform.icon;
+        tooltip.textContent = platform.label;
+      }, 2000);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(finish).catch(() => fallbackCopy(url, finish));
+    } else {
+      fallbackCopy(url, finish);
+    }
+  }
+  function fallbackCopy(text, cb){
+    const el = document.createElement("textarea");
+    el.value = text;
+    el.style.position = "fixed";
+    el.style.opacity = "0";
+    document.body.appendChild(el);
+    el.select();
+    try { document.execCommand("copy"); } catch(e){}
+    document.body.removeChild(el);
+    cb();
+  }
+
+  let isOpen = false;
+
+  function setOpen(open){
+    isOpen = open;
+    fabBtn.classList.toggle("open", isOpen);
+    
+    SoundFX.playPop(isOpen);
+
+    items.forEach((item, index) => {
+      const delay = isOpen ? item.wrap.dataset.openDelay : item.wrap.dataset.closeDelay;
+      item.wrap.style.transitionDelay = `${delay}s, ${delay}s, ${delay}s`;
+      if (isOpen) {
+        SoundFX.playSpawn(parseFloat(delay), index);
+        item.wrap.classList.add("visible");
+        item.wrap.style.transform = `translate(${item.targetX}px, ${item.targetY}px) scale(${item.perspectiveScale})`;
+      } else {
+        item.wrap.style.transform = `translate(0px, 0px) scale(0)`;
+        item.wrap.classList.remove("visible");
+      }
+    });
+  }
+
+  fabBtn.addEventListener("click", async () => {
+    await SoundFX.init();
+    spawnRipple(fabBtn, "#7c5cff");
+    setOpen(!isOpen);
+  });
+  
+  if (config.fabOpenOnHover) {
+    fabBtn.addEventListener("mouseenter", () => setOpen(true));
+  }
+  container.addEventListener("mouseleave", () => {
+    if (isOpen) setOpen(false);
+    setHovered(null);
+  });
+
+  let hoveredKey = null;
+  function setHovered(key){
+    hoveredKey = key;
+    items.forEach(item => {
+      const otherHovered = hoveredKey !== null && hoveredKey !== item.key;
+      item.inner.classList.toggle("dimmed", otherHovered);
+    });
+  }
+
+  let rawX = 0, rawY = 0;
+  let smoothX = 0, smoothY = 0;
+  const lerpFactor = 0.05 + (1 - config.parallaxSmoothing) * 0.35;
+
+  function handleMouseMove(e){
+    const rect = container.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    rawX = e.clientX - cx;
+    rawY = e.clientY - cy;
+  }
+  window.addEventListener("mousemove", handleMouseMove);
+  window.addEventListener("mouseleave", () => { rawX = 0; rawY = 0; });
+
+  function tick(){
+    smoothX += (rawX - smoothX) * lerpFactor;
+    smoothY += (rawY - smoothY) * lerpFactor;
+
+    items.forEach(item => {
+      const px = (smoothX - item.targetX) * item.depth * config.parallaxStrength * 0.12;
+      const py = (smoothY - item.targetY) * item.depth * config.parallaxStrength * 0.12;
+      item.inner.style.transform = `translate(${px}px, ${py}px)`;
+    });
+
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+})();
+</script>
+</body>
+</html>
